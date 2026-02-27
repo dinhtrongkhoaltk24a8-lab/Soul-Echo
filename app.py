@@ -1,18 +1,13 @@
 import streamlit as st
-import google.generativeai as genai
-import os
-from dotenv import load_dotenv
+from google import genai
 
-# Load API key
-load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-# Khởi tạo model
-model = genai.GenerativeModel("gemini-1.5-flash") 
-
-# Cấu hình trang
+# ===== CONFIG =====
 st.set_page_config(page_title="Soul Echo AI", page_icon="💙")
 
+# Lấy API key từ Streamlit Secrets
+client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+
+# ===== UI =====
 st.title("💙 Soul Echo AI")
 st.write("Người bạn đồng hành cảm xúc của bạn.")
 
@@ -34,36 +29,38 @@ Rules:
 - Keep responses structured and gentle
 """
 
-if "chat" not in st.session_state:
-    st.session_state.chat = model.start_chat(history=[
-        {"role": "user", "parts": [SYSTEM_PROMPT]},
-        {"role": "model", "parts": ["Understood. I will act as Soul Echo AI."]}
-    ])
-
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Hiển thị lịch sử chat
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+# Input
 user_input = st.chat_input("Hãy chia sẻ cảm xúc của bạn...")
 
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
+    
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # Tạo prompt đầy đủ gồm system + lịch sử
+    # Tạo prompt đầy đủ
     conversation = SYSTEM_PROMPT + "\n\n"
-
     for msg in st.session_state.messages:
         conversation += f"{msg['role']}: {msg['content']}\n"
 
-    response = model.generate_content(conversation)
+    # Gọi Gemini (SDK mới)
+    response = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=conversation,
+    )
+
     ai_reply = response.text
 
     st.session_state.messages.append({"role": "assistant", "content": ai_reply})
+
     with st.chat_message("assistant"):
         st.markdown(ai_reply)
 
