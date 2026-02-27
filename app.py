@@ -1,5 +1,5 @@
 import streamlit as st
-from google import genai
+import google.generativeai as genai
 
 # ===== CONFIG =====
 st.set_page_config(page_title="Soul Echo AI", page_icon="💙")
@@ -63,5 +63,6 @@ if user_input:
 
     with st.chat_message("assistant"):
         st.markdown(ai_reply)
+
 
 
