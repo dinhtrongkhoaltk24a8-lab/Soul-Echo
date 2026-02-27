@@ -54,10 +54,16 @@ if user_input:
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    response = st.session_state.chat.send_message(user_input)
+    # Tạo prompt đầy đủ gồm system + lịch sử
+    conversation = SYSTEM_PROMPT + "\n\n"
+
+    for msg in st.session_state.messages:
+        conversation += f"{msg['role']}: {msg['content']}\n"
+
+    response = model.generate_content(conversation)
     ai_reply = response.text
 
     st.session_state.messages.append({"role": "assistant", "content": ai_reply})
     with st.chat_message("assistant"):
-
         st.markdown(ai_reply)
+
