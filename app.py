@@ -3,22 +3,26 @@ import google.generativeai as genai
 
 st.set_page_config(page_title="Soul Echo AI", page_icon="💙")
 
-# API key từ Streamlit Secrets
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+# Cấu hình API Key
+if "GEMINI_API_KEY" in st.secrets:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+else:
+    st.error("Thiếu GEMINI_API_KEY trong Streamlit Secrets!")
 
-model = genai.GenerativeModel("gemini-1.5-flash")
+# Sử dụng tên model đầy đủ để tránh lỗi NotFound
+model = genai.GenerativeModel(
+    model_name="models/gemini-1.5-flash",
+    system_instruction="You are Soul Echo AI, an emotional support companion. Be warm, empathetic, structured and gentle."
+)
 
 st.title("💙 Soul Echo AI")
 st.write("Người bạn đồng hành cảm xúc của bạn.")
 
-SYSTEM_PROMPT = """
-You are Soul Echo AI, an emotional support companion.
-Be warm, empathetic, structured and gentle.
-"""
-
+# Khởi tạo lịch sử tin nhắn
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Hiển thị các tin nhắn cũ
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
@@ -26,23 +30,30 @@ for message in st.session_state.messages:
 user_input = st.chat_input("Hãy chia sẻ cảm xúc của bạn...")
 
 if user_input:
+    # Hiển thị tin nhắn người dùng
     st.session_state.messages.append({"role": "user", "content": user_input})
-
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    conversation = SYSTEM_PROMPT + "\n\n"
-    for msg in st.session_state.messages:
-        conversation += f"{msg['role']}: {msg['content']}\n"
+    # Gửi tin nhắn đến AI
+    try:
+        # Chuyển đổi lịch sử cho đúng định dạng của Gemini (user -> user, assistant -> model)
+        history = [
+            {"role": "user" if m["role"] == "user" else "model", "parts": [m["content"]]}
+            for m in st.session_state.messages[:-1]
+        ]
+        
+        chat_session = model.start_chat(history=history)
+        response = chat_session.send_message(user_input)
+        ai_reply = response.text
 
-    response = model.generate_content(conversation)
-
-    ai_reply = response.text if hasattr(response, "text") else str(response)
-
-    st.session_state.messages.append({"role": "assistant", "content": ai_reply})
-
-    with st.chat_message("assistant"):
-        st.markdown(ai_reply)
+        # Hiển thị và lưu phản hồi của AI
+        st.session_state.messages.append({"role": "assistant", "content": ai_reply})
+        with st.chat_message("assistant"):
+            st.markdown(ai_reply)
+            
+    except Exception as e:
+        st.error(f"Đã xảy ra lỗi: {e}")
 
 
 
