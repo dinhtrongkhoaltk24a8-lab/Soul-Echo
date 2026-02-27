@@ -1,86 +1,81 @@
 import streamlit as st
 import google.generativeai as genai
 
-# 1. Cấu hình trang
-st.set_page_config(page_title="Soul Echo AI", page_icon="💙", layout="centered")
+st.set_page_config(page_title="Soul Echo AI", page_icon="💙")
 
-# 2. Cấu hình API Key (Lấy từ Streamlit Secrets)
+# 1. Cấu hình API Key
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 else:
-    st.error("❌ Không tìm thấy API Key. Vui lòng thêm GEMINI_API_KEY vào mục Secrets trên Streamlit.")
+    st.error("Thiếu GEMINI_API_KEY trong Streamlit Secrets!")
     st.stop()
 
-# 3. Khởi tạo Model với tên định danh ổn định nhất
-# Sử dụng 'gemini-1.5-flash-latest' để đảm bảo luôn gọi được model mới nhất
-model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash-latest",
-    system_instruction="You are Soul Echo AI, an emotional support companion. Be warm, empathetic, structured and gentle. Respond in Vietnamese."
-)
+# 2. CƠ CHẾ TỰ ĐỘNG CHỌN MODEL (Fix lỗi 404 triệt để)
+@st.cache_resource
+def get_working_model():
+    # Thử danh sách các tên model phổ biến theo thứ tự ưu tiên
+    priority_models = [
+        "gemini-1.5-flash", 
+        "models/gemini-1.5-flash", 
+        "gemini-1.5-flash-latest", 
+        "gemini-pro"
+    ]
+    
+    available_models = [m.name for m in genai.list_models() if "generateContent" in m.supported_generation_methods]
+    
+    # Chọn model đầu tiên trong danh sách ưu tiên mà hệ thống của bạn có
+    for model_name in priority_models:
+        for available in available_models:
+            if model_name in available or available in model_name:
+                return genai.GenerativeModel(
+                    model_name=available,
+                    system_instruction="You are Soul Echo AI, an emotional support companion. Be warm, empathetic, and gentle. Respond in Vietnamese."
+                )
+    # Nếu không tìm thấy cái nào trong danh sách, lấy cái đầu tiên khả dụng
+    return genai.GenerativeModel(model_name=available_models[0])
 
+try:
+    model = get_working_model()
+except Exception as e:
+    st.error(f"Không thể khởi tạo AI: {e}")
+    st.stop()
+
+# 3. Giao diện Chat
 st.title("💙 Soul Echo AI")
-st.markdown("---")
-st.write("Chào bạn, mình là Soul Echo. Hôm nay bạn cảm thấy thế nào?")
+st.write("Người bạn đồng hành cảm xúc của bạn.")
 
-# 4. Khởi tạo bộ nhớ hội thoại (Session State)
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# 5. Hiển thị lịch sử chat
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# 6. Xử lý nhập liệu từ người dùng
-user_input = st.chat_input("Hãy chia sẻ nỗi lòng của bạn...")
+user_input = st.chat_input("Hãy chia sẻ cảm xúc của bạn...")
 
 if user_input:
-    # Hiển thị tin nhắn của người dùng ngay lập tức
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # 7. Gọi API và xử lý phản hồi
     with st.chat_message("assistant"):
-        placeholder = st.empty()
-        placeholder.markdown("🔍 *Soul Echo đang lắng nghe...*")
-        
         try:
-            # Chuyển đổi lịch sử sang định dạng Gemini (user/model)
-            # Đây là bước quan trọng để tránh lỗi định dạng tin nhắn
+            # Chuyển đổi lịch sử chuẩn format Google
             history = []
             for m in st.session_state.messages[:-1]:
-                role = "user" if m["role"] == "user" else "model"
-                history.append({"role": role, "parts": [m["content"]]})
-
-            # Khởi tạo chat session với lịch sử
-            chat_session = model.start_chat(history=history)
+                history.append({
+                    "role": "user" if m["role"] == "user" else "model",
+                    "parts": [m["content"]]
+                })
             
-            # Gửi tin nhắn và nhận phản hồi
-            response = chat_session.send_message(user_input)
+            chat = model.start_chat(history=history)
+            response = chat.send_message(user_input)
+            
             ai_reply = response.text
-
-            # Cập nhật giao diện và lưu vào lịch sử
-            placeholder.markdown(ai_reply)
+            st.markdown(ai_reply)
             st.session_state.messages.append({"role": "assistant", "content": ai_reply})
-
+            
         except Exception as e:
-            error_msg = str(e)
-            if "404" in error_msg:
-                st.error("Lỗi 404: Không tìm thấy model. Hãy thử đổi tên model thành 'gemini-pro'.")
-            elif "429" in error_msg:
-                st.error("Lỗi 429: Bạn đã gửi quá nhiều yêu cầu, hãy đợi một chút nhé.")
-            else:
-                st.error(f"Đã xảy ra lỗi: {error_msg}")
-            placeholder.empty()
-
-# Tùy chỉnh giao diện một chút cho đẹp (CSS)
-st.markdown("""
-    <style>
-    .stChatMessage { border-radius: 15px; margin-bottom: 10px; }
-    </style>
-    """, unsafe_allow_html=True)
-
-
+            st.error(f"Lỗi phản hồi: {e}")
 
 
