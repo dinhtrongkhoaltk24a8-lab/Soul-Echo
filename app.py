@@ -8,7 +8,7 @@ load_dotenv()
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Khởi tạo model
-model = genai.GenerativeModel("gemini-1.5-pro")
+model = genai.GenerativeModel("gemini-1.5-flash") 
 
 # Cấu hình trang
 st.set_page_config(page_title="Soul Echo AI", page_icon="💙")
@@ -59,4 +59,5 @@ if user_input:
 
     st.session_state.messages.append({"role": "assistant", "content": ai_reply})
     with st.chat_message("assistant"):
+
         st.markdown(ai_reply)
