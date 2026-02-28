@@ -23,7 +23,7 @@ Phong cách: Không phán xét, riêng tư, và tràn tình thương.
 """
 
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash", 
+    model_name="gemini-1.5-flash", # Tuyệt đối không để "Gemini 3 Flash Preview"
     system_instruction=SYSTEM_INSTRUCTION
 )
 
@@ -62,5 +62,6 @@ if prompt := st.chat_input("Chia sẻ với Soul Echo..."):
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
             except Exception as e:
                 st.error(f"Lỗi: {e}")
+
 
 
