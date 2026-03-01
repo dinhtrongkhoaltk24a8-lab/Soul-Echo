@@ -3,7 +3,7 @@ import google.generativeai as genai
 
 # --- CẤU HÌNH API ---
 # Thay dãy chữ dưới đây bằng API Key bạn vừa lấy ở Bước 1
-API_KEY = "AIzaSyBIdwnLJpEtUKyXP2NJ3bfwuZlKTXrifCg" 
+API_KEY = "" 
 genai.configure(api_key=API_KEY)
 
 # --- CẤU HÌNH MODEL & SYSTEM INSTRUCTION ---
@@ -62,6 +62,7 @@ if prompt := st.chat_input("Chia sẻ với Soul Echo..."):
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
             except Exception as e:
                 st.error(f"Lỗi: {e}")
+
 
 
 
